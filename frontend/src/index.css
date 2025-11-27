@@ -1,0 +1,40 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Simple global styling */
+body {
+  @apply bg-slate-100 text-slate-900;
+}
+
+.app-container {
+  @apply min-h-screen flex justify-center items-center;
+}
+
+.card {
+  @apply bg-white rounded-xl shadow-md p-6;
+}
+
+.btn-primary {
+  @apply bg-indigo-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-indigo-700 transition;
+}
+
+.btn-secondary {
+  @apply bg-slate-200 text-slate-800 px-4 py-2 rounded-lg font-medium hover:bg-slate-300 transition;
+}
+
+.input {
+  @apply w-full border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-3;
+}
+
+.label {
+  @apply block text-sm font-medium text-slate-700 mb-1;
+}
+
+.link {
+  @apply text-indigo-600 hover:underline;
+}
+
+.badge {
+  @apply inline-block bg-indigo-100 text-indigo-800 text-xs px-2 py-1 rounded-full;
+}
