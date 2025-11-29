@@ -9,6 +9,8 @@ import StudentDashboard from "./pages/StudentDashboard";
 import TeacherDashboard from "./pages/TeacherDashboard";
 import QuizTaking from "./pages/QuizTaking";
 import TeacherQuizAttempts from "./pages/TeacherQuizAttempts";
+import ManageQuestions from "./pages/ManageQuestions";
+
 
 function App() {
   return (
@@ -54,6 +56,16 @@ function App() {
               </ProtectedRoute>
             }
           />
+
+          <Route
+  path="/teacher/quizzes/:quizId/questions"
+  element={
+    <ProtectedRoute role="teacher">
+      <ManageQuestions />
+    </ProtectedRoute>
+  }
+/>
+
 
           {/* Fallback */}
           <Route path="*" element={<Navigate to="/" replace />} />

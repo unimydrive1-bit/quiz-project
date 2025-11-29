@@ -137,24 +137,35 @@ export default function TeacherDashboard() {
 
           <div className="space-y-3">
             {summary.map((q) => (
-              <div
-                key={q.quiz_id}
-                className="flex justify-between items-center border-b border-slate-100 pb-2"
-              >
-                <div>
-                  <p className="font-semibold text-slate-800">{q.title}</p>
-                  <p className="text-xs text-slate-400">
-                    Attempts: {q.attempts}
-                  </p>
-                </div>
-                <Link
-                  to={`/teacher/quizzes/${q.quiz_id}/attempts`}
-                  className="btn-secondary text-xs"
-                >
-                  View attempts
-                </Link>
-              </div>
-            ))}
+  <div
+    key={q.quiz_id}
+    className="flex justify-between items-center border-b border-slate-100 pb-2"
+  >
+    <div>
+      <p className="font-semibold text-slate-800">{q.title}</p>
+      <p className="text-xs text-slate-400">
+        Attempts: {q.attempts}
+      </p>
+    </div>
+
+    <div className="flex gap-2">
+      <Link
+        to={`/teacher/quizzes/${q.quiz_id}/questions`}
+        className="btn-primary text-xs"
+      >
+        Manage Questions
+      </Link>
+
+      <Link
+        to={`/teacher/quizzes/${q.quiz_id}/attempts`}
+        className="btn-secondary text-xs"
+      >
+        View attempts
+      </Link>
+    </div>
+  </div>
+))}
+
           </div>
         </div>
       </div>

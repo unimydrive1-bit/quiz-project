@@ -28,11 +28,13 @@ from .serializers import (
     AttemptAnswerSerializer,
     RegisterSerializer,
     CustomTokenObtainPairSerializer,
+    ChoiceCreateSerializer,      # NEW
 )
 from .permissions import IsTeacher, IsStudent
 
 
 # ---------- Auth Views ----------
+
 
 class RegisterView(APIView):
     permission_classes = [AllowAny]
@@ -55,6 +57,7 @@ class CustomTokenRefreshView(TokenRefreshView):
 
 
 # ---------- Quiz CRUD & assignment ----------
+
 
 class QuizViewSet(viewsets.ModelViewSet):
     queryset = Quiz.objects.all().select_related("creator")
@@ -114,7 +117,33 @@ class QuestionViewSet(viewsets.ModelViewSet):
         return [IsAuthenticated()]
 
 
+# ---------- NEW: Choice ViewSet for creating/updating choices ----------
+
+
+class ChoiceViewSet(viewsets.ModelViewSet):
+    """
+    Allows teachers to create/update/delete choices for questions.
+
+    - List / filter choices if needed
+    - Only teachers may modify
+    - Students can only read (if you ever expose it)
+    """
+
+    queryset = Choice.objects.all().select_related("question", "question__quiz")
+    permission_classes = [IsAuthenticated]
+
+    def get_serializer_class(self):
+        return ChoiceCreateSerializer
+
+    def get_permissions(self):
+        # Only teachers can change choices
+        if self.action in ["create", "update", "partial_update", "destroy"]:
+            return [IsAuthenticated(), IsTeacher()]
+        return [IsAuthenticated()]
+
+
 # ---------- Helper for scoring ----------
+
 
 def _calculate_attempt_score(attempt: Attempt):
     """
@@ -152,6 +181,7 @@ def _calculate_attempt_score(attempt: Attempt):
 
 
 # ---------- Student endpoints ----------
+
 
 class StudentAssignedQuizzesView(APIView):
     permission_classes = [IsAuthenticated, IsStudent]
@@ -269,6 +299,7 @@ class ReviewWrongAnswersView(APIView):
 
 
 # ---------- Teacher endpoints ----------
+
 
 class TeacherQuizSummaryView(APIView):
     permission_classes = [IsAuthenticated, IsTeacher]
