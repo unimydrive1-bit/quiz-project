@@ -20,10 +20,10 @@ export const fetchTeacherQuizAttempts = (quizId) =>
 export const fetchAllQuizzesForTeacher = () =>
   client.get("quizzes/");
 
-// ⭐ Create a quiz
+//  Create a quiz
 export const createQuiz = (payload) =>
   client.post("quizzes/", payload);
 
-// ⭐ DELETE a quiz (ADD THIS!)
+//  DELETE a quiz (ADD THIS!)
 export const deleteQuiz = (quizId) =>
   client.delete(`quizzes/${quizId}/`);
