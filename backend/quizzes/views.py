@@ -28,7 +28,7 @@ from .serializers import (
     AttemptAnswerSerializer,
     RegisterSerializer,
     CustomTokenObtainPairSerializer,
-    ChoiceCreateSerializer,      # NEW
+    ChoiceCreateSerializer,
 )
 from .permissions import IsTeacher, IsStudent
 
@@ -56,7 +56,7 @@ class CustomTokenRefreshView(TokenRefreshView):
     permission_classes = [AllowAny]
 
 
-# ---------- Quiz CRUD & assignment ----------
+# ---------- Quiz CRUD ----------
 
 
 class QuizViewSet(viewsets.ModelViewSet):
@@ -64,10 +64,23 @@ class QuizViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_serializer_class(self):
-        if self.request.user.is_authenticated and self.request.user.is_teacher():
-            if self.action in ["create", "update", "partial_update"]:
+        user = self.request.user
+        
+        # Teacher logic
+        if user.is_authenticated and user.is_teacher():
+
+            # ⭐ Return FULL serializer on CREATE so we get created_at
+            if self.action == "create":
+                return QuizSerializer
+
+            # ⭐ Use simple serializer only for UPDATE/PATCH
+            if self.action in ["update", "partial_update"]:
                 return QuizCreateUpdateSerializer
+
+            # All other teacher actions → full serializer
             return QuizSerializer
+
+        # Students always get full serializer
         return QuizSerializer
 
     def perform_create(self, serializer):
@@ -80,10 +93,6 @@ class QuizViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"], permission_classes=[IsAuthenticated, IsTeacher])
     def assign(self, request, pk=None):
-        """
-        Assign a quiz to a list of students.
-        Body: { "students": [1,2,3] }
-        """
         quiz = self.get_object()
         student_ids = request.data.get("students", [])
         if not isinstance(student_ids, list):
@@ -102,9 +111,19 @@ class QuizViewSet(viewsets.ModelViewSet):
         return Response({"created_assignments": created}, status=200)
 
 
+
+# ---------- QUESTIONS ----------
+
+
 class QuestionViewSet(viewsets.ModelViewSet):
-    queryset = Question.objects.all().select_related("quiz")
     permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        queryset = Question.objects.all().select_related("quiz")
+        quiz_id = self.request.query_params.get("quiz")
+        if quiz_id:
+            queryset = queryset.filter(quiz_id=quiz_id)
+        return queryset
 
     def get_serializer_class(self):
         if self.request.user.is_authenticated and self.request.user.is_teacher():
@@ -117,18 +136,10 @@ class QuestionViewSet(viewsets.ModelViewSet):
         return [IsAuthenticated()]
 
 
-# ---------- NEW: Choice ViewSet for creating/updating choices ----------
+# ---------- CHOICES ----------
 
 
 class ChoiceViewSet(viewsets.ModelViewSet):
-    """
-    Allows teachers to create/update/delete choices for questions.
-
-    - List / filter choices if needed
-    - Only teachers may modify
-    - Students can only read (if you ever expose it)
-    """
-
     queryset = Choice.objects.all().select_related("question", "question__quiz")
     permission_classes = [IsAuthenticated]
 
@@ -136,19 +147,15 @@ class ChoiceViewSet(viewsets.ModelViewSet):
         return ChoiceCreateSerializer
 
     def get_permissions(self):
-        # Only teachers can change choices
         if self.action in ["create", "update", "partial_update", "destroy"]:
             return [IsAuthenticated(), IsTeacher()]
         return [IsAuthenticated()]
 
 
-# ---------- Helper for scoring ----------
+# ---------- SCORING ----------
 
 
 def _calculate_attempt_score(attempt: Attempt):
-    """
-    Shared scoring helper – used in FinishAttemptView.
-    """
     answers = attempt.answers.select_related("question", "selected_choice")
     total_points = 0
     earned_points = 0
@@ -180,7 +187,7 @@ def _calculate_attempt_score(attempt: Attempt):
     return attempt
 
 
-# ---------- Student endpoints ----------
+# ---------- STUDENT QUIZ LIST ----------
 
 
 class StudentAssignedQuizzesView(APIView):
@@ -197,16 +204,34 @@ class StudentAssignedQuizzesView(APIView):
         return Response(data)
 
 
+# ---------- START ATTEMPT ----------
+
+
 class StartAttemptView(APIView):
     permission_classes = [IsAuthenticated, IsStudent]
 
     def post(self, request, quiz_pk):
         quiz = get_object_or_404(Quiz, pk=quiz_pk)
+
         assigned = QuizAssignment.objects.filter(
             quiz=quiz, student=request.user, is_active=True
         )
         if not assigned.exists():
             return Response({"detail": "Quiz not assigned to you"}, status=403)
+
+        # -------------------------------
+        # ⭐ MAX ATTEMPTS ENFORCEMENT
+        # -------------------------------
+        existing_attempts = Attempt.objects.filter(
+            quiz=quiz, student=request.user
+        ).count()
+
+        if quiz.max_attempts is not None and existing_attempts >= quiz.max_attempts:
+            return Response(
+                {"detail": "Maximum attempt limit reached."},
+                status=403
+            )
+        # -------------------------------
 
         attempt = Attempt.objects.create(
             quiz=quiz,
@@ -215,8 +240,12 @@ class StartAttemptView(APIView):
             status="in_progress",
             time_limit_seconds=quiz.time_limit_seconds,
         )
+
         serializer = AttemptSerializer(attempt)
         return Response(serializer.data, status=201)
+
+
+# ---------- ATTEMPT DETAIL ----------
 
 
 class AttemptDetailView(APIView):
@@ -226,6 +255,9 @@ class AttemptDetailView(APIView):
         attempt = get_object_or_404(Attempt, pk=attempt_pk, student=request.user)
         serializer = AttemptSerializer(attempt)
         return Response(serializer.data)
+
+
+# ---------- SUBMIT ANSWER ----------
 
 
 class SubmitAnswerView(APIView):
@@ -261,6 +293,9 @@ class SubmitAnswerView(APIView):
         return Response(AttemptAnswerSerializer(aa).data, status=200)
 
 
+# ---------- FINISH ATTEMPT ----------
+
+
 class FinishAttemptView(APIView):
     permission_classes = [IsAuthenticated, IsStudent]
 
@@ -282,6 +317,9 @@ class FinishAttemptView(APIView):
         )
 
 
+# ---------- REVIEW WRONG ANSWERS ----------
+
+
 class ReviewWrongAnswersView(APIView):
     permission_classes = [IsAuthenticated, IsStudent]
 
@@ -298,7 +336,7 @@ class ReviewWrongAnswersView(APIView):
         return Response(serializer.data)
 
 
-# ---------- Teacher endpoints ----------
+# ---------- TEACHER SIDE ----------
 
 
 class TeacherQuizSummaryView(APIView):

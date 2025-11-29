@@ -1,5 +1,4 @@
 from django.contrib.auth import get_user_model
-
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
@@ -14,15 +13,39 @@ from .models import (
 
 User = get_user_model()
 
-# ----- Auth -----
 
+# ===============================
+#        AUTH SERIALIZERS
+# ===============================
 
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=6)
+    university_id = serializers.CharField(
+        required=False, allow_blank=True, allow_null=True
+    )
 
     class Meta:
         model = User
-        fields = ["id", "username", "email", "password", "role"]
+        fields = ["id", "username", "email", "password", "role", "university_id"]
+
+    def validate(self, data):
+        role = data.get("role")
+        university_id = data.get("university_id")
+
+        if role == "student":
+            if not university_id:
+                raise serializers.ValidationError({
+                    "university_id": "University ID is required for students."
+                })
+            if not (university_id.isdigit() and len(university_id) == 9):
+                raise serializers.ValidationError({
+                    "university_id": "University ID must be exactly 9 digits."
+                })
+
+        if role == "teacher":
+            data["university_id"] = None
+
+        return data
 
     def create(self, validated_data):
         password = validated_data.pop("password")
@@ -50,8 +73,9 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         return data
 
 
-# ----- Core serializers -----
-
+# ===============================
+#       BASIC MODEL SERIALIZERS
+# ===============================
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -71,11 +95,9 @@ class ChoiceTeacherSerializer(serializers.ModelSerializer):
         fields = ["id", "text", "order", "is_correct"]
 
 
-# NEW: serializer used for creating/updating choices via API
 class ChoiceCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Choice
-        # include question so frontend can link choice to a question
         fields = ["id", "question", "text", "is_correct", "order"]
 
 
@@ -94,7 +116,7 @@ class QuestionTeacherSerializer(serializers.ModelSerializer):
         model = Question
         fields = [
             "id",
-            "quiz",              # ADDED: so teacher can assign question to a quiz
+            "quiz",
             "text",
             "qtype",
             "points",
@@ -103,6 +125,10 @@ class QuestionTeacherSerializer(serializers.ModelSerializer):
             "choices",
         ]
 
+
+# ===============================
+#         QUIZ SERIALIZERS
+# ===============================
 
 class QuizSerializer(serializers.ModelSerializer):
     creator = UserSerializer(read_only=True)
@@ -115,6 +141,7 @@ class QuizSerializer(serializers.ModelSerializer):
             "title",
             "description",
             "time_limit_seconds",
+            "max_attempts",        # ✅ ADDED
             "shuffle_questions",
             "created_at",
             "creator",
@@ -125,8 +152,19 @@ class QuizSerializer(serializers.ModelSerializer):
 class QuizCreateUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Quiz
-        fields = ["id", "title", "description", "time_limit_seconds", "shuffle_questions"]
+        fields = [
+            "id",
+            "title",
+            "description",
+            "time_limit_seconds",
+            "max_attempts",        # ✅ ADDED
+            "shuffle_questions",
+        ]
 
+
+# ===============================
+#       ASSIGNMENT SERIALIZER
+# ===============================
 
 class QuizAssignmentSerializer(serializers.ModelSerializer):
     quiz = serializers.PrimaryKeyRelatedField(queryset=Quiz.objects.all())
@@ -147,8 +185,11 @@ class QuizAssignmentSerializer(serializers.ModelSerializer):
         read_only_fields = ["assigned_by", "assigned_at"]
 
 
+# ===============================
+#        ATTEMPT SERIALIZERS
+# ===============================
+
 class AttemptAnswerSerializer(serializers.ModelSerializer):
-    # EXTRA helpful fields for review screens (used in frontend Quiz review)
     question_text = serializers.CharField(source="question.text", read_only=True)
     selected_choice_text = serializers.CharField(
         source="selected_choice.text", read_only=True
@@ -164,7 +205,6 @@ class AttemptAnswerSerializer(serializers.ModelSerializer):
             "short_answer_text",
             "is_correct",
             "answered_at",
-            # extra helper fields:
             "question_text",
             "selected_choice_text",
         ]
@@ -189,7 +229,7 @@ class AttemptSerializer(serializers.ModelSerializer):
             "score",
             "total_correct",
             "total_wrong",
-            "time_limit_seconds",
+            "time_limit_seconds",   # matches front/back
             "answers",
         ]
         read_only_fields = [

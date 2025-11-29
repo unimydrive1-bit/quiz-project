@@ -13,21 +13,24 @@ export default function LoginPage() {
     setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError("");
-    const res = await loginUser(form.username, form.password);
-    if (res.ok) {
-      // redirect by role
-      if (res?.user?.role === "teacher") {
-        navigate("/teacher");
-      } else {
-        navigate("/");
-      }
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  setError("");
+
+  const res = await loginUser(form.username, form.password);
+  if (res.ok) {
+    // we now use the user in AuthContext
+    const loggedUser = JSON.parse(localStorage.getItem("authTokens")).user;
+
+    if (loggedUser.role === "teacher") {
+      navigate("/teacher");
     } else {
-      setError(res.error || "Login failed");
+      navigate("/student");
     }
-  };
+  } else {
+    setError(res.error || "Login failed");
+  }
+};
 
   return (
     <div className="app-container">

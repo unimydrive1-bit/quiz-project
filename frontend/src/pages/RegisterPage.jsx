@@ -10,18 +10,25 @@ export default function RegisterPage() {
     username: "",
     email: "",
     password: "",
-    role: "student",
+    role: "student",     // default
+    university_id: "",   // for students only
   });
+
   const [error, setError] = useState("");
 
   const handleChange = (e) => {
-    setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
+    setForm((prev) => ({
+      ...prev,
+      [e.target.name]: e.target.value,
+    }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+
     const res = await registerUser(form);
+
     if (res.ok) {
       navigate("/login");
     } else {
@@ -32,11 +39,9 @@ export default function RegisterPage() {
   return (
     <div className="app-container">
       <div className="card w-full max-w-md">
-        <h1 className="text-2xl font-bold mb-2 text-slate-800 text-center">
-          Create account
-        </h1>
+        <h1 className="text-2xl font-bold mb-2 text-center">Create Account</h1>
         <p className="text-sm text-slate-500 mb-6 text-center">
-          Choose role: Teacher or Student
+          Join QuizApp today
         </p>
 
         {error && (
@@ -59,16 +64,16 @@ export default function RegisterPage() {
           <input
             className="input"
             name="email"
-            type="email"
             value={form.email}
             onChange={handleChange}
+            required
           />
 
           <label className="label">Password</label>
           <input
             className="input"
-            name="password"
             type="password"
+            name="password"
             value={form.password}
             onChange={handleChange}
             required
@@ -85,16 +90,32 @@ export default function RegisterPage() {
             <option value="teacher">Teacher</option>
           </select>
 
-          <button className="btn-primary w-full mt-2" disabled={loading}>
-            {loading ? "Creating..." : "Register"}
+          {/* Show only for students */}
+          {form.role === "student" && (
+            <>
+              <label className="label">University ID (9 digits)</label>
+              <input
+                className="input"
+                name="university_id"
+                value={form.university_id}
+                onChange={handleChange}
+                placeholder="e.g. 202312345"
+                required
+              />
+            </>
+          )}
+
+          <button
+            className="btn-primary w-full mt-2"
+            disabled={loading}
+          >
+            {loading ? "Registering..." : "Register"}
           </button>
         </form>
 
         <p className="text-xs text-slate-500 mt-4 text-center">
           Already have an account?{" "}
-          <Link className="link" to="/login">
-            Login
-          </Link>
+          <Link className="link" to="/login">Login</Link>
         </p>
       </div>
     </div>

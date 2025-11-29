@@ -8,7 +8,11 @@ class User(AbstractUser):
         ("teacher", "Teacher"),
         ("student", "Student"),
     )
+
     role = models.CharField(max_length=10, choices=ROLE_CHOICES, default="student")
+
+    # NEW FIELD (optional for teachers, required for students)
+    university_id = models.CharField(max_length=9, blank=True, null=True)
 
     def is_teacher(self):
         return self.role == "teacher"
@@ -17,16 +21,31 @@ class User(AbstractUser):
         return self.role == "student"
 
 
+
+from django.db import models
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
+
 class Quiz(models.Model):
-    creator = models.ForeignKey(User, on_delete=models.CASCADE, related_name="created_quizzes")
+    creator = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="created_quizzes"
+    )
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True)
+
+    # time limit in SECONDS
     time_limit_seconds = models.PositiveIntegerField(null=True, blank=True)
+
+    # NEW FIELD — max attempts (null = unlimited)
+    max_attempts = models.PositiveIntegerField(null=True, blank=True)
+
     shuffle_questions = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return self.title
+
 
 
 class Question(models.Model):

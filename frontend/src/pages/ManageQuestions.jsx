@@ -133,11 +133,9 @@ export default function ManageQuestions() {
     }
   };
 
+  // ✅ FIXED HERE — redirect to /teacher instead of /teacher/dashboard
   const handleSaveQuiz = () => {
-    // Nothing special to do server-side here,
-    // questions are already saved individually.
-    // Just navigate back to teacher dashboard.
-    navigate("/teacher/dashboard");
+    navigate("/teacher");
   };
 
   return (
@@ -167,16 +165,12 @@ export default function ManageQuestions() {
           {questions.map((q) => (
             <li
               key={q.id}
-              className="flex justify-between items-center border-b last:border-b-0 pb-2"
+              className="p-3 bg-slate-50 rounded border flex justify-between items-center"
             >
-              <div>
-                <p className="font-medium">{q.text}</p>
-                <p className="text-xs text-gray-500">Type: {q.qtype}</p>
-              </div>
-
+              <span>{q.text}</span>
               <button
                 onClick={() => handleDeleteQuestion(q.id)}
-                className="px-3 py-1 bg-red-600 text-white rounded text-xs hover:bg-red-700"
+                className="text-red-600 hover:text-red-800 text-sm"
               >
                 Delete
               </button>
@@ -185,66 +179,45 @@ export default function ManageQuestions() {
         </ul>
       </div>
 
-      {/* Wizard */}
-      <div className="max-w-3xl mx-auto">
-        {step === 1 && (
-          <StepType
-            qtype={qtype}
-            setQtype={setQtype}
-            onNext={() => setStep(2)}
-          />
-        )}
+      {/* Wizard steps */}
+      {step === 1 && (
+        <StepType qtype={qtype} setQtype={setQtype} onNext={() => setStep(2)} />
+      )}
 
-        {step === 2 && (
-          <StepText
-            text={text}
-            setText={setText}
-            onBack={() => setStep(1)}
-            onNext={() => {
-              if (qtype === "short") {
-                setStep(4);
-              } else {
-                setStep(3);
-              }
-            }}
-          />
-        )}
+      {step === 2 && (
+        <StepText text={text} setText={setText} onNext={() => setStep(3)} />
+      )}
 
-        {step === 3 && qtype === "tf" && (
-          <StepTrueFalse
-            tfValue={tfValue}
-            setTfValue={setTfValue}
-            onBack={() => setStep(2)}
-            onNext={() => setStep(4)}
-          />
-        )}
+      {step === 3 && qtype === "mcq" && (
+        <StepChoices
+          choices={choices}
+          setChoices={setChoices}
+          onBack={() => setStep(2)}
+          onNext={() => setStep(4)}
+        />
+      )}
 
-        {step === 3 && qtype === "mcq" && (
-          <StepChoices
-            choices={choices}
-            setChoices={setChoices}
-            onBack={() => setStep(2)}
-            onNext={() => setStep(4)}
-          />
-        )}
+      {step === 3 && qtype === "tf" && (
+        <StepTrueFalse
+          tfValue={tfValue}
+          setTfValue={setTfValue}
+          onBack={() => setStep(2)}
+          onNext={() => setStep(4)}
+        />
+      )}
 
-        {step === 4 && (
-          <StepConfirm
-            text={text}
-            qtype={qtype}
-            choices={choices}
-            tfValue={tfValue}
-            onBack={() => {
-              if (qtype === "short") {
-                setStep(2);
-              } else {
-                setStep(3);
-              }
-            }}
-            onSave={handleSaveQuestion}
-          />
-        )}
-      </div>
+      {step === 3 && qtype === "short" && setStep(4)}
+
+      {step === 4 && (
+        <StepConfirm
+          text={text}
+          qtype={qtype}
+          choices={choices}
+          tfValue={tfValue}
+          onBack={() => setStep(3)}
+          onSave={handleSaveQuestion}
+        />
+      )}
     </div>
   );
 }

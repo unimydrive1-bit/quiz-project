@@ -1,174 +1,226 @@
-import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import React, { useEffect, useState } from "react";
 import useAuth from "../hooks/useAuth";
+import {
+  fetchAllQuizzesForTeacher,
+  createQuiz,
+  deleteQuiz,             // ⭐ NEW API IMPORT
+} from "../api/quizzes";
+import { Link } from "react-router-dom";
 import LayoutShell from "../components/LayoutShell";
-import { fetchTeacherQuizSummary, fetchAllQuizzesForTeacher } from "../api/quizzes";
-import client from "../api/client";
 
 export default function TeacherDashboard() {
-  const { user } = useAuth();
-  const [summary, setSummary] = useState([]);
+  const { authTokens } = useAuth();
+  const token = authTokens?.access || null;
+
   const [quizzes, setQuizzes] = useState([]);
-  const [creating, setCreating] = useState(false);
-  const [form, setForm] = useState({
-    title: "",
-    description: "",
-    time_limit_seconds: 300,
-    shuffle_questions: false,
-  });
+  const [showModal, setShowModal] = useState(false);
 
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const [s, q] = await Promise.all([
-          fetchTeacherQuizSummary(),
-          fetchAllQuizzesForTeacher(),
-        ]);
-        setSummary(s.data);
-        setQuizzes(q.data);
-      } catch (err) {
-        console.error(err);
-      }
-    };
-    load();
-  }, []);
+  // Create Quiz Fields
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [timeLimitMinutes, setTimeLimitMinutes] = useState(1);
+  const [maxAttempts, setMaxAttempts] = useState(1);
+  const [unlimitedAttempts, setUnlimitedAttempts] = useState(false);
 
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setForm((f) => ({
-      ...f,
-      [name]: type === "checkbox" ? checked : value,
-    }));
+  // Load quizzes from API
+  const loadQuizzes = async () => {
+    try {
+      const response = await fetchAllQuizzesForTeacher();
+      setQuizzes(response.data);
+    } catch (err) {
+      console.error("Failed to load quizzes", err);
+    }
   };
 
-  const handleCreateQuiz = async (e) => {
-    e.preventDefault();
-    setCreating(true);
+  useEffect(() => {
+    if (token) loadQuizzes();
+  }, [token]);
+
+  // ⭐ CREATE QUIZ — backend includes created_at now
+  const handleCreateQuiz = async () => {
+    if (!title.trim()) {
+      alert("Please enter a title.");
+      return;
+    }
+
+    if (timeLimitMinutes < 1) {
+      alert("Time limit must be at least 1 minute.");
+      return;
+    }
+
+    if (!unlimitedAttempts && maxAttempts < 1) {
+      alert("Max attempts must be at least 1.");
+      return;
+    }
+
     try {
-      const res = await client.post("quizzes/", form);
-      setQuizzes((prev) => [...prev, res.data]);
-      setForm({
-        title: "",
-        description: "",
-        time_limit_seconds: 300,
+      const payload = {
+        title,
+        description,
+        time_limit_seconds: timeLimitMinutes * 60,
+        max_attempts: unlimitedAttempts ? null : maxAttempts,
         shuffle_questions: false,
-      });
+      };
+
+      const res = await createQuiz(payload);
+      await loadQuizzes();
+
+      alert(
+        `Quiz created at: ${new Date(res.data.created_at).toLocaleString()}`
+      );
+
+      // Reset form
+      setShowModal(false);
+      setTitle("");
+      setDescription("");
+      setTimeLimitMinutes(1);
+      setMaxAttempts(1);
+      setUnlimitedAttempts(false);
+
     } catch (err) {
-      console.error(err);
+      console.error("Failed to create quiz", err);
       alert("Failed to create quiz");
-    } finally {
-      setCreating(false);
+    }
+  };
+
+  // ⭐ DELETE QUIZ
+  const handleDeleteQuiz = async (quizId) => {
+    const confirmDelete = window.confirm("Are you sure you want to delete this quiz?");
+    if (!confirmDelete) return;
+
+    try {
+      await deleteQuiz(quizId);
+      await loadQuizzes();
+    } catch (err) {
+      console.error("Failed to delete quiz", err);
+      alert("Failed to delete quiz");
     }
   };
 
   return (
     <LayoutShell title="Teacher Dashboard">
-      <h1 className="text-2xl font-bold text-slate-800 mb-2">
-        Hello, {user?.username}
-      </h1>
-      <p className="text-sm text-slate-500 mb-6">
-        Manage your quizzes, view attempts, and assign quizzes to students.
-      </p>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold">Your Quizzes</h1>
 
-      <div className="grid md:grid-cols-3 gap-6">
-        {/* Create quiz */}
-        <div className="md:col-span-1 card">
-          <h2 className="text-lg font-semibold text-slate-800 mb-3">
-            Create new quiz
-          </h2>
-          <form onSubmit={handleCreateQuiz}>
+        <button
+          className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+          onClick={() => setShowModal(true)}
+        >
+          + Create Quiz
+        </button>
+      </div>
+
+      {/* QUIZ LIST */}
+      <div className="grid md:grid-cols-2 gap-4">
+        {quizzes.map((quiz) => (
+          <div
+            key={quiz.id}
+            className="bg-white shadow rounded-lg p-4 hover:shadow-md transition relative"
+          >
+            {/* ⭐ DELETE BUTTON */}
+            <button
+              onClick={() => handleDeleteQuiz(quiz.id)}
+              className="absolute top-2 right-2 text-red-600 hover:text-red-800 text-sm"
+            >
+              ✖
+            </button>
+
+            <Link to={`/teacher/quizzes/${quiz.id}/questions`}>
+              <h3 className="text-xl font-semibold">{quiz.title}</h3>
+              <p className="text-sm text-slate-500 mt-1">{quiz.description}</p>
+
+              <p className="text-xs text-slate-400 mt-2">
+                ⏱ Time Limit: {quiz.time_limit_seconds / 60} min
+              </p>
+
+              <p className="text-xs text-slate-400">
+                🔁 Attempts: {quiz.max_attempts === null ? "Unlimited" : quiz.max_attempts}
+              </p>
+
+              <p className="text-xs text-slate-400">
+                📅 Created: {new Date(quiz.created_at).toLocaleString()}
+              </p>
+            </Link>
+          </div>
+        ))}
+      </div>
+
+      {/* CREATE QUIZ MODAL */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex justify-center items-center">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-lg">
+            <h2 className="text-xl font-bold mb-4">Create New Quiz</h2>
+
+            {/* Title */}
             <label className="label">Title</label>
             <input
-              className="input"
-              name="title"
-              value={form.title}
-              onChange={handleChange}
-              required
+              className="input mb-3"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
             />
 
+            {/* Description */}
             <label className="label">Description</label>
             <textarea
-              className="input"
-              name="description"
-              rows={3}
-              value={form.description}
-              onChange={handleChange}
-            />
+              className="input mb-4"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            ></textarea>
 
-            <label className="label">Time limit (seconds)</label>
+            {/* Time Limit */}
+            <label className="label">Time Limit (Minutes)</label>
             <input
-              className="input"
               type="number"
-              name="time_limit_seconds"
-              value={form.time_limit_seconds}
-              onChange={handleChange}
-              min={0}
+              min="1"
+              className="input mb-4"
+              value={timeLimitMinutes}
+              onChange={(e) =>
+                setTimeLimitMinutes(Number(e.target.value))
+              }
             />
 
-            <div className="flex items-center gap-2 mb-3">
+            {/* Max Attempts */}
+            <label className="label">Max Attempts</label>
+            <input
+              type="number"
+              min="1"
+              disabled={unlimitedAttempts}
+              className={`input mb-1 ${
+                unlimitedAttempts ? "bg-gray-200 cursor-not-allowed" : ""
+              }`}
+              value={maxAttempts}
+              onChange={(e) => setMaxAttempts(Number(e.target.value))}
+            />
+
+            {/* Unlimited Attempts */}
+            <label className="flex items-center gap-2 mt-1 mb-4">
               <input
                 type="checkbox"
-                id="shuffle"
-                name="shuffle_questions"
-                checked={form.shuffle_questions}
-                onChange={handleChange}
+                checked={unlimitedAttempts}
+                onChange={(e) => setUnlimitedAttempts(e.target.checked)}
               />
-              <label htmlFor="shuffle" className="text-sm text-slate-600">
-                Shuffle questions
-              </label>
+              Unlimited Attempts
+            </label>
+
+            {/* Buttons */}
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowModal(false)}
+                className="px-4 py-2 bg-slate-200 rounded-lg hover:bg-slate-300"
+              >
+                Cancel
+              </button>
+
+              <button
+                onClick={handleCreateQuiz}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+              >
+                Create
+              </button>
             </div>
-
-            <button className="btn-primary w-full" disabled={creating}>
-              {creating ? "Creating..." : "Create quiz"}
-            </button>
-          </form>
-        </div>
-
-        {/* Summary */}
-        <div className="md:col-span-2 card">
-          <h2 className="text-lg font-semibold text-slate-800 mb-3">
-            Quiz overview
-          </h2>
-          {summary.length === 0 && (
-            <p className="text-sm text-slate-500">
-              No quizzes yet. Create one on the left.
-            </p>
-          )}
-
-          <div className="space-y-3">
-            {summary.map((q) => (
-  <div
-    key={q.quiz_id}
-    className="flex justify-between items-center border-b border-slate-100 pb-2"
-  >
-    <div>
-      <p className="font-semibold text-slate-800">{q.title}</p>
-      <p className="text-xs text-slate-400">
-        Attempts: {q.attempts}
-      </p>
-    </div>
-
-    <div className="flex gap-2">
-      <Link
-        to={`/teacher/quizzes/${q.quiz_id}/questions`}
-        className="btn-primary text-xs"
-      >
-        Manage Questions
-      </Link>
-
-      <Link
-        to={`/teacher/quizzes/${q.quiz_id}/attempts`}
-        className="btn-secondary text-xs"
-      >
-        View attempts
-      </Link>
-    </div>
-  </div>
-))}
-
           </div>
         </div>
-      </div>
+      )}
     </LayoutShell>
   );
 }

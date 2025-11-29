@@ -7,7 +7,8 @@ export default function LayoutShell({ children, title }) {
 
   const handleLogout = () => {
     logoutUser();
-    navigate("/login");
+    // HARD REDIRECT so ProtectedRoute cannot override the navigation
+    window.location.href = "/";
   };
 
   return (
@@ -24,7 +25,7 @@ export default function LayoutShell({ children, title }) {
           </div>
 
           <div className="flex items-center gap-4">
-            {user && (
+            {user ? (
               <>
                 <span className="text-sm text-slate-600">
                   Signed in as{" "}
@@ -40,14 +41,17 @@ export default function LayoutShell({ children, title }) {
                   Logout
                 </button>
               </>
+            ) : (
+              <>
+                <Link to="/login" className="text-sm text-indigo-600">Login</Link>
+                <Link to="/register" className="text-sm text-indigo-600">Register</Link>
+              </>
             )}
           </div>
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-4 py-8">
-        {children}
-      </main>
+      <main className="max-w-6xl mx-auto px-4 py-8">{children}</main>
 
       <footer className="text-center py-4 text-xs text-slate-400">
         Built with Django & React · Tailwind UI

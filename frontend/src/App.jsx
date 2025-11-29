@@ -3,33 +3,41 @@ import { AuthProvider } from "./context/AuthContext";
 
 import ProtectedRoute from "./components/ProtectedRoute";
 
+// Public pages
+import HomePage from "./pages/HomePage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
+
+// Student pages
 import StudentDashboard from "./pages/StudentDashboard";
-import TeacherDashboard from "./pages/TeacherDashboard";
 import QuizTaking from "./pages/QuizTaking";
+
+// Teacher pages
+import TeacherDashboard from "./pages/TeacherDashboard";
 import TeacherQuizAttempts from "./pages/TeacherQuizAttempts";
 import ManageQuestions from "./pages/ManageQuestions";
-
 
 function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
         <Routes>
-          {/* Auth */}
+
+          {/* ---------- PUBLIC ROUTES ---------- */}
+          <Route path="/" element={<HomePage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
 
-          {/* Student routes */}
+          {/* ---------- STUDENT ROUTES ---------- */}
           <Route
-            path="/"
+            path="/student"
             element={
               <ProtectedRoute role="student">
                 <StudentDashboard />
               </ProtectedRoute>
             }
           />
+
           <Route
             path="/quiz/:quizId/start"
             element={
@@ -39,7 +47,7 @@ function App() {
             }
           />
 
-          {/* Teacher routes */}
+          {/* ---------- TEACHER ROUTES ---------- */}
           <Route
             path="/teacher"
             element={
@@ -48,6 +56,7 @@ function App() {
               </ProtectedRoute>
             }
           />
+
           <Route
             path="/teacher/quizzes/:quizId/attempts"
             element={
@@ -58,17 +67,17 @@ function App() {
           />
 
           <Route
-  path="/teacher/quizzes/:quizId/questions"
-  element={
-    <ProtectedRoute role="teacher">
-      <ManageQuestions />
-    </ProtectedRoute>
-  }
-/>
+            path="/teacher/quizzes/:quizId/questions"
+            element={
+              <ProtectedRoute role="teacher">
+                <ManageQuestions />
+              </ProtectedRoute>
+            }
+          />
 
-
-          {/* Fallback */}
+          {/* ---------- FALLBACK ---------- */}
           <Route path="*" element={<Navigate to="/" replace />} />
+
         </Routes>
       </AuthProvider>
     </BrowserRouter>
