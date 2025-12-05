@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Quiz Review - {{ quiz.title }}</title>
+</head>
+<body>
+    <h1>Quiz Review: {{ quiz.title }}</h1>
+
+    <p><strong>Your Score:</strong> {{ attempt.score }}</p>
+    <p><strong>Completed at:</strong> {{ attempt.created_at }}</p>
+
+    <hr>
+
+    {% for item in questions_data %}
+        <div style="margin-bottom: 20px;">
+            <h3>Q{{ forloop.counter }}. {{ item.question.text }}</h3>
+
+            <ul>
+                {% for c in item.choices %}
+                    <li>
+                        {% if c.id == item.selected_choice.id %}
+                            ➤ <strong>{{ c.text }}</strong> (your answer)
+                        {% else %}
+                            {{ c.text }}
+                        {% endif %}
+
+                        {% if c.is_correct %}
+                            – <span style="color: green;">Correct answer</span>
+                        {% endif %}
+                    </li>
+                {% endfor %}
+            </ul>
+
+            {% if item.is_correct %}
+                <p style="color: green;">✅ You got this question correct.</p>
+            {% else %}
+                <p style="color: red;">❌ Your answer was incorrect.</p>
+                <p><strong>Correct answer(s):</strong>
+                    {% for cc in item.correct_choices %}
+                        {{ cc.text }}{% if not forloop.last %}, {% endif %}
+                    {% endfor %}
+                </p>
+            {% endif %}
+            <hr>
+        </div>
+    {% endfor %}
+
+    <p><a href="{% url 'quizzes:my_quiz_attempts' %}">Back to my attempts</a></p>
+</body>
+</html>

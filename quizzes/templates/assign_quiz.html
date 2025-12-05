@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Assign Quiz - {{ quiz.title }}</title>
+</head>
+<body>
+    <h1>Assign Quiz: {{ quiz.title }}</h1>
+
+    <form method="post">
+        {% csrf_token %}
+
+        <p>Select students to assign this quiz:</p>
+        <ul>
+            {% for s in students %}
+                <li>
+                    <label>
+                        <input type="checkbox" name="students" value="{{ s.id }}"
+                               {% if s.id in assigned_student_ids %}checked{% endif %}>
+                        {{ s.username }} ({{ s.email }})
+                    </label>
+                </li>
+            {% endfor %}
+        </ul>
+
+        <button type="submit">Save Assignments</button>
+    </form>
+</body>
+</html>

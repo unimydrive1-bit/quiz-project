@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>My Quiz Attempts</title>
+</head>
+<body>
+    <h1>My Quiz Attempts</h1>
+
+    {% if attempts %}
+        <table border="1" cellpadding="8">
+            <tr>
+                <th>Quiz</th>
+                <th>Score</th>
+                <th>Status</th>
+                <th>Date</th>
+                <th>Review</th>
+            </tr>
+            {% for attempt in attempts %}
+            <tr>
+                <td>{{ attempt.quiz.title }}</td>
+                <td>{{ attempt.score }}</td>
+                <td>
+                    {% if attempt.is_finished %}
+                        Finished
+                    {% else %}
+                        In Progress
+                    {% endif %}
+                </td>
+                <td>{{ attempt.created_at }}</td>
+                <td>
+                    <a href="{% url 'quizzes:quiz_review' attempt.id %}">View Review</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+    {% else %}
+        <p>You have no finished attempts yet.</p>
+    {% endif %}
+</body>
+</html>
